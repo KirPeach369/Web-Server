@@ -13,18 +13,18 @@ provider "aws"{
 }
 
 resource "aws_vpc" "main" {
-  cidr_block = "10.0.0.0/16"
+  cidr_block = var.vpc_cidr_block
 }
 
 resource "aws_subnet" "public" {
   vpc_id     = aws_vpc.main.id
-  cidr_block = "10.0.1.0/24"
+  cidr_block = var.public_subnet
   
 }
 
 resource "aws_subnet" "private" {
   vpc_id     = aws_vpc.main.id
-  cidr_block = "10.0.2.0/24"  
+  cidr_block = var.private_subnet  
 }
 
 resource "aws_internet_gateway" "igw" {
@@ -75,24 +75,16 @@ resource "aws_route_table_association" "private_association" {
 resource "aws_security_group" "sg_KK" {
 
   vpc_id = aws_vpc.main.id
-  
- 
-  ingress {
-  description = "HTTP from the internet"    
-  from_port   = 80
-  to_port     = 80
-  protocol    = "tcp"
-  cidr_blocks = ["0.0.0.0/0"]
+    
+  dynamic "ingress" {
+    for_each = ["80", "443"]
+    content {
+      from_port   = ingress.value
+      to_port     = ingress.value
+      protocol    = "tcp"
+      cidr_blocks = ["0.0.0.0/0"]
+    }
   }
-
-  ingress {
-  description = "SSH from the internet"    
-  from_port   = 443
-  to_port     = 443
-  protocol    = "tcp"
-  cidr_blocks = ["0.0.0.0/0"]
-  }
-
 
   ingress {
   description = "SSH from the internet"    
@@ -114,7 +106,7 @@ resource "aws_security_group" "sg_KK" {
 resource "aws_instance" "my_web2" {
   
   ami = "ami-0ca285d4c2cda3300"
-  instance_type = "t3.micro"
+  instance_type = var.instance_type
   vpc_security_group_ids = [aws_security_group.sg_KK.id]
   subnet_id = aws_subnet.public.id
   associate_public_ip_address = true
